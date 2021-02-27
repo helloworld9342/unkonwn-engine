@@ -1,0 +1,2784 @@
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Point;
+
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+public class KitenCore {
+	public static void main(String[] args) {
+		JFrame jf = new JFrame("Kaiten03");
+		MyCanvas mc = new MyCanvas(); //キャンバスオブジェクトを作る
+		MyThread th = new MyThread(mc);
+		jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); //クローズボタンで終了
+		mc.setPreferredSize(new Dimension(1500,1500)); //キャンバスのサイズを設定
+		jf.getContentPane().add(mc); //フレームにキャンバスを貼り付け
+		jf.pack(); //フレームの大きさを自動調整
+		jf.setVisible(true); //画面にフレームを表示
+		th.start();
+	}
+}
+class MyCanvas extends JPanel {
+	static double now = 0;									//現時刻
+	static final double[] ZERO = {0, 0, 0};
+	double delta_t = 0.12;							//刻み幅
+	static double []F0 = {0, 0, -50};				//力
+	static double []F1 = {-100, -300, -300};
+	static double []CF0_a = {0, 0, 0};
+	static double []CF0_b = {0, 0, 0};
+	static double []CF1_a = {0, 0, 0};
+	static double []CF1_b = {0, 0, 0};
+	static double []Sayouten_0 = {0, 0, 0};				//P0,P2のどれか 力Fとともに使う　Action point
+	static double []Sayouten_1 = {0, 360, 360};
+	static double []Double_Sayouten_P00 = {0, 0, 0};
+	static double []Double_Sayouten_P01 = {0, 0, 0};
+	static double []Double_Sayouten_P02 = {0, 0, 0};
+	static double []Double_Sayouten_P10 = {0, 0, 0};
+	static double []Double_Sayouten_P11 = {0, 0, 0};
+	static double []Double_Sayouten_P12 = {0, 0, 0};
+	double diameter = 120.0; //直径
+	static double [] P00 = {120, 0, 0}; //ball1
+	static double [] P01 = {0, 0, 0}; //ball2
+	static double [] P02 = {0, 0, 120}; //ball3
+	static double [] J0 =  {40, 0, 40};
+	static double [] P10 = {0, 360, 480};
+	static double [] P11 = {0, 360, 360};
+	static double [] P12 = {120, 360, 360};
+	static double [] J1 =  {40, 360, 400};
+	static double []Momentum_0 = {0, 0, 0};
+	static double []Momentum_1 = {0, 0, 0};
+	static double []A_Momentum_0 = {0, 0, 0};
+	static double []A_Momentum_1 = {0, 0, 0};
+	int dx0, dx1, dx2, dx3, dx4, dx5, dy0, dy1, dy2, dy3, dy4, dy5;
+	Point p2d0, p2d1, p2d2, p2d3, p2d4, p2d5;
+
+	public void paintComponent(Graphics g) {
+		 super.paintComponent(g);
+		 setBackground(Color.black);
+		 drawSphere(g);
+	}
+	void drawSphere(Graphics g) {
+		g.setColor(Color. green);
+		g.fillOval(dx0, dy0, 120, 120);
+		g.fillOval(dx1, dy1, 120, 120);
+		g.fillOval(dx2, dy2, 120, 120);
+		g.setColor(Color. blue);
+		g.fillOval(dx3, dy3, 120, 120);
+		g.fillOval(dx4, dy4, 120, 120);
+		g.fillOval(dx5, dy5, 120, 120);
+	}
+	public double[] Update_J0(double time) {
+		 double []Goutai_Distance = Goutai_Distance_0(time);
+		 J0 = addVector(Goutai_Distance, J0);
+		 return J0;
+	}
+	public double[] Update_J1(double time) {
+		 double []Goutai_Distance = Goutai_Distance_1(time);
+		 J1 = addVector(Goutai_Distance, J1);
+		 return J1;
+	}
+	public double[] Set_Next_Pos00(double []P, double time, double []P0, double []P1, double []P2){
+		 double Scalar_Angle = Angle_Of_Rotation_0(time, P0, P1, P2, J0);
+		 double Angle = Scalar_Angle * delta_t;
+		 double []Goutai_Distance = Goutai_Distance_0(time);
+		 double []JSIVector0 = subVector(P, J0);	//重心相対位置ベクトルJSIVector
+		 double []R_JSIVector0 = RotationMatrix_0(JSIVector0, Angle, time, F0, P0, P1, P2, J0);
+		 double []Next_ItiVector_P0 = addVector(R_JSIVector0, J0);
+		 double []Next_ItiVector_PP0 = addVector(Next_ItiVector_P0, Goutai_Distance);
+		 P00 =  Next_ItiVector_PP0;
+		 p2d0 = From3Dto2D(Next_ItiVector_PP0, getWidth()/2, getHeight()/2 );
+		 dx0 = (int)p2d0.getX();
+		 dy0 = (int)p2d0.getY();
+		 return P00;
+	}
+	public double[] Set_Next_Pos01(double []P, double time, double []P0, double []P1, double []P2){
+		 double Scalar_Angle = Angle_Of_Rotation_0(time, P0, P1, P2, J0);
+		 double Angle = Scalar_Angle * delta_t;
+		 double []Goutai_Distance = Goutai_Distance_0(time);
+		 double []JSIVector1 = subVector(P, J0);	//重心相対位置ベクトルJSIVector
+		 double []R_JSIVector1 = RotationMatrix_0(JSIVector1, Angle, time, F0, P0, P1, P2, J0);
+		 double []Next_ItiVector_P1 = addVector(R_JSIVector1, J0);
+		 double []Next_ItiVector_PP1 = addVector(Next_ItiVector_P1, Goutai_Distance);
+		 P01 =  Next_ItiVector_PP1;
+		 p2d1 = From3Dto2D(Next_ItiVector_PP1, getWidth()/2, getHeight()/2 );
+		 dx1 = (int)p2d1.getX();
+		 dy1 = (int)p2d1.getY();
+		 return P01;
+	}
+	public double[] Set_Next_Pos02(double []P, double time, double []P0, double []P1, double []P2){
+		 double Scalar_Angle = Angle_Of_Rotation_0(time, P0, P1, P2, J0);
+		 double Angle = Scalar_Angle * delta_t;
+		 double []Goutai_Distance = Goutai_Distance_0(time);
+		 double []JSIVector2 = subVector(P, J0);	//重心相対位置ベクトルJSIVector
+		 double []R_JSIVector2 = RotationMatrix_0(JSIVector2, Angle, time, F0, P0, P1, P2, J0);
+		 double []Next_ItiVector_P2 = addVector(R_JSIVector2, J0);
+		 double []Next_ItiVector_PP2 = addVector(Next_ItiVector_P2, Goutai_Distance);
+		 P02 = Next_ItiVector_PP2;
+		 p2d2 = From3Dto2D(Next_ItiVector_PP2, getWidth()/2, getHeight()/2 );
+		 dx2 = (int)p2d2.getX();
+		 dy2 = (int)p2d2.getY();
+		 return P02;
+	}
+	public double[] Set_Next_Pos10(double []P, double time, double []P0, double []P1, double []P2){
+		 double Scalar_Angle = Angle_Of_Rotation_1(time, P0, P1, P2, J1);
+		 double Angle = Scalar_Angle * delta_t;
+		 double []Goutai_Distance = Goutai_Distance_1(time);
+		 double []JSIVector3 = subVector(P, J1);	//重心相対位置ベクトルJSIVector
+		 double []R_JSIVector3 = RotationMatrix_1(JSIVector3, Angle, time, F1, P0, P1, P2, J1);
+		 double []Next_ItiVector_P3 = addVector(R_JSIVector3, J1);
+		 double []Next_ItiVector_PP3 = addVector(Next_ItiVector_P3, Goutai_Distance);
+		 P10 = Next_ItiVector_PP3;
+		 p2d3 = From3Dto2D(Next_ItiVector_PP3, getWidth()/2, getHeight()/2 );
+		 dx3 = (int)p2d3.getX();
+		 dy3 = (int)p2d3.getY();
+		 return P10;
+	}
+	public double[] Set_Next_Pos11(double []P, double time, double []P0, double []P1, double []P2){
+		 double Scalar_Angle = Angle_Of_Rotation_1(time, P0, P1, P2, J1);
+		 double Angle = Scalar_Angle * delta_t;
+		 double []Goutai_Distance = Goutai_Distance_1(time);
+		 double []JSIVector4 = subVector(P, J1);	//重心相対位置ベクトルJSIVector
+		 double []R_JSIVector4 = RotationMatrix_1(JSIVector4, Angle, time, F1, P0, P1, P2, J1);
+		 double []Next_ItiVector_P4 = addVector(R_JSIVector4, J1);
+		 double []Next_ItiVector_PP4 = addVector(Next_ItiVector_P4, Goutai_Distance);
+		 P11 = Next_ItiVector_PP4;
+		 p2d4 = From3Dto2D(Next_ItiVector_PP4, getWidth()/2, getHeight()/2 );
+		 dx4 = (int)p2d4.getX();
+		 dy4 = (int)p2d4.getY();
+		 return P11;
+	}
+	public double[] Set_Next_Pos12(double []P, double time, double []P0, double []P1, double []P2){
+		 double Scalar_Angle = Angle_Of_Rotation_1(time, P0, P1, P2, J1);
+		 double Angle = Scalar_Angle * delta_t;
+		 double []Goutai_Distance = Goutai_Distance_1(time);
+		 double []JSIVector5 = subVector(P, J1);	//重心相対位置ベクトルJSIVector
+		 double []R_JSIVector5 = RotationMatrix_1(JSIVector5, Angle, time, F1, P0, P1, P2, J1);
+		 double []Next_ItiVector_P5 = addVector(R_JSIVector5, J1);
+		 double []Next_ItiVector_PP5 = addVector(Next_ItiVector_P5, Goutai_Distance);
+		 P12 = Next_ItiVector_PP5;
+		 p2d5 = From3Dto2D(Next_ItiVector_PP5, getWidth()/2, getHeight()/2 );
+		 dx5 = (int)p2d5.getX();
+		 dy5 = (int)p2d5.getY();
+		 return P12;
+	}
+	public void drawNext() {
+		now = now  + delta_t;
+		Update_J0(now);
+		Update_J1(now);
+		Set_Next_Pos00(P00, now, P00, P01, P02);
+		Set_Next_Pos01(P01, now, P00, P01, P02);
+		Set_Next_Pos02(P02, now, P00, P01, P02);
+		Set_Next_Pos10(P10, now, P10, P11, P12);
+		Set_Next_Pos11(P11, now, P10, P11, P12);
+		Set_Next_Pos12(P12, now, P10, P11, P12);
+		repaint(); //画面更新
+	}
+	public double [] RotationMatrix_0(double []JSIV, double theta, double time, double []F, double []P0, double []P1, double []P2, double []J) {//配列Vは相対位置ベクトル
+		final double D2Rad = Math.PI/180.0; //度からラジアンへの変換定数
+		double X, Y, Z;
+		double []Axis = Axis_0(time, P0, P1, P2, J);
+		X = Axis[0];
+		Y = Axis[1];
+		Z = Axis[2];
+		double k = theta * D2Rad;
+		double sinT = Math.sin(k);
+		double cosT = Math.cos(k);
+		double [][]R = new double [][]{{X* X* (1 - cosT)+ cosT, X* Y* (1 - cosT)- Z* sinT, Z* X* (1 - cosT)+ Y* sinT},
+										{X* Y* (1 - cosT)+ Z* sinT, Y* Y* (1 - cosT)+ cosT, Y* Z* (1 - cosT)- X* sinT},
+										{Z* X* (1 - cosT)- Y* sinT, Y* Z* (1 - cosT) +X* sinT, Z* Z* (1 - cosT)+ cosT}};
+		return mulArray_Vector_2(R, JSIV);
+	}
+	public double [] RotationMatrix_1(double []JSIV, double theta, double time, double []F, double []P0, double []P1, double []P2, double []J) {//配列Vは相対位置ベクトル
+		final double D2Rad = Math.PI/180.0; //度からラジアンへの変換定数
+		double X, Y, Z;
+		double []Axis = Axis_1(time, F, P0, P1, P2, J);
+		X = Axis[0];
+		Y = Axis[1];
+		Z = Axis[2];
+		double k = theta * D2Rad;
+		double sinT = Math.sin(k);
+		double cosT = Math.cos(k);
+		double [][]R = new double [][]{{X* X* (1 - cosT)+ cosT, X* Y* (1 - cosT)- Z* sinT, Z* X* (1 - cosT)+ Y* sinT},
+										{X* Y* (1 - cosT)+ Z* sinT, Y* Y* (1 - cosT)+ cosT, Y* Z* (1 - cosT)- X* sinT},
+										{Z* X* (1 - cosT)- Y* sinT, Y* Z* (1 - cosT) +X* sinT, Z* Z* (1 - cosT)+ cosT}};
+		return mulArray_Vector_2(R, JSIV);
+	}
+	public double[] Axis_0(double time, double []P0, double []P1, double []P2, double []J) {
+		double [] Angle_Rate = {0, 0, 0};
+		double [] Angular_Momentum = {0, 0, 0};
+		double [] Axis = new double [3];
+		double [][] Inverse_I = new double[3][3];
+		double scalar_AngleRate;
+		Angular_Momentum = Angular_Momentum_0(time, J);
+		Inverse_I = Inverse_MomentOfInertia(P0, P1, P2, J);
+		Angle_Rate = mulArray_Vector_2(Inverse_I, Angular_Momentum);
+		double A = Angle_Rate[0] * Angle_Rate[0] + Angle_Rate[1] * Angle_Rate[1] + Angle_Rate[2] * Angle_Rate[2];
+		scalar_AngleRate = Math.sqrt(A);
+		Axis[0] = 1/scalar_AngleRate * Angle_Rate[0];
+		Axis[1] = 1/scalar_AngleRate * Angle_Rate[1];
+		Axis[2] = 1/scalar_AngleRate * Angle_Rate[2];
+		return Axis;
+	}
+	public double[] Axis_1(double time, double []F, double []P0, double []P1, double []P2, double []J) {
+		double [] Angle_Rate = {0, 0, 0};
+		double [] Angular_Momentum = {0, 0, 0};
+		double [] Axis = new double [3];
+		double [][] Inverse_I = new double[3][3];
+		double scalar_AngleRate;
+		Angular_Momentum = Angular_Momentum_1(time, J);
+		Inverse_I = Inverse_MomentOfInertia(P0, P1, P2, J);
+		Angle_Rate = mulArray_Vector_2(Inverse_I, Angular_Momentum);
+		double A = Angle_Rate[0] * Angle_Rate[0] + Angle_Rate[1] * Angle_Rate[1] + Angle_Rate[2] * Angle_Rate[2];
+		scalar_AngleRate = Math.sqrt(A);
+		Axis[0] = 1/scalar_AngleRate * Angle_Rate[0];
+		Axis[1] = 1/scalar_AngleRate * Angle_Rate[1];
+		Axis[2] = 1/scalar_AngleRate * Angle_Rate[2];
+		return Axis;
+	}
+	public double[] Momentum_0(double time) {
+		boolean x = Collision_Detection();
+		//boolean w = Double_Collision_Detection();
+		if(delta_t >= time && time > 0){
+			Momentum_0 = mulVector(F0, delta_t); //[]Torque * t
+		}
+		else if( x == true && time > delta_t) {
+			F0 = Collision_Detection_F0();
+			Single_Collision_Detection_Sayouten_0();
+			double []delta_Momentum = mulVector(F0, delta_t);
+			Momentum_0 = addVector(Momentum_0, delta_Momentum);
+		}
+		/*else if(w == true && time > delta_t) {
+			F0 =  addVector(CF0_a, CF0_b);
+			double []delta_Momentum = mulVector(F0, delta_t);
+			Momentum_0 = addVector(Momentum_0, delta_Momentum);
+		}*/
+	return Momentum_0;
+	}
+	public double[] Momentum_1(double time) {
+		boolean x = Collision_Detection();
+		//boolean w = Double_Collision_Detection();
+		if(delta_t >= time && time > 0){
+			Momentum_1 = mulVector(F1, delta_t); //[]Torque * t
+		}
+		else if( x == true && time > delta_t) {
+			F1 = Collision_Detection_F1();
+			Single_Collision_Detection_Sayouten_1();
+			double []delta_Momentum = mulVector(F1, delta_t);
+			Momentum_1 = addVector(Momentum_1, delta_Momentum);
+		}
+		/*else if(w == true && time > delta_t) {
+			F1 =  addVector(CF1_a, CF1_b);
+			double []delta_Momentum = mulVector(F1, delta_t);
+			Momentum_1 = addVector(Momentum_1, delta_Momentum);
+		}*/
+	return Momentum_1;
+	}
+	public double[] Angular_Momentum_0(double time, double []J) {
+		boolean x = Collision_Detection();
+		//boolean w = Double_Collision_Detection();
+		double []Sayouten_JSIVector = subVector(Sayouten_0, J);
+		double []Torque = Outer_Product(Sayouten_JSIVector, F0);
+		if(delta_t >= time && time > 0){
+			A_Momentum_0 = mulVector(Torque, time); //[]Torque * t
+		}
+		else if(x == true) {
+			F0 = Collision_Detection_F0();
+			Sayouten_0 = Single_Collision_Detection_Sayouten_0();
+			double []C_Sayouten_JSIVector = subVector(Sayouten_0, J);
+			double []C_Torque = Outer_Product(C_Sayouten_JSIVector, F0);
+			double []delta_AMomentum = mulVector(C_Torque, time);
+			A_Momentum_0 = addVector(A_Momentum_0, delta_AMomentum);
+		}
+		/*else if(w == true) {
+			Double_Sayouten_P00 = Collision_Double_Sayouten_P00();
+			Double_Sayouten_P01 = Collision_Double_Sayouten_P01();
+			Double_Sayouten_P02 = Collision_Double_Sayouten_P02();
+			double []W_P00Sayouten_JSIVector = new double[3];
+			double []W_P01Sayouten_JSIVector = new double[3];
+			double []W_P02Sayouten_JSIVector = new double[3];
+			double []W_P00Torque = new double[3];
+			double []W_P01Torque = new double[3];
+			double []W_P02Torque = new double[3];
+			double []W_P00delta_AMomentum = new double[3];
+			double []W_P01delta_AMomentum = new double[3];
+			double []W_P02delta_AMomentum = new double[3];
+			if(Double_Sayouten_P00 == P00 ) {
+				W_P01Sayouten_JSIVector = subVector(Double_Sayouten_P01, J);
+				W_P02Sayouten_JSIVector = subVector(Double_Sayouten_P02, J);
+				W_P01Torque = Outer_Product(W_P01Sayouten_JSIVector, F0);
+				W_P02Torque = Outer_Product(W_P02Sayouten_JSIVector, F0);
+				W_P01delta_AMomentum = mulVector(W_P01Torque, time);
+				W_P02delta_AMomentum = mulVector(W_P02Torque, time);
+				double []sum_AM = addVector(W_P01delta_AMomentum, W_P02delta_AMomentum);
+				A_Momentum_0 = addVector(A_Momentum_0, sum_AM);
+				return A_Momentum_0;
+			}
+			if(Double_Sayouten_P01 == P01 ) {
+				W_P00Sayouten_JSIVector = subVector(Double_Sayouten_P00, J);
+				W_P02Sayouten_JSIVector = subVector(Double_Sayouten_P02, J);
+				W_P01Torque = Outer_Product(W_P01Sayouten_JSIVector, F0);
+				W_P02Torque = Outer_Product(W_P02Sayouten_JSIVector, F0);
+				W_P00delta_AMomentum = mulVector(W_P00Torque, time);
+				W_P02delta_AMomentum = mulVector(W_P02Torque, time);
+				double []sum_AM = addVector(W_P00delta_AMomentum, W_P02delta_AMomentum);
+				A_Momentum_0 = addVector(A_Momentum_0, sum_AM);
+				return A_Momentum_0;
+			}
+			if(Double_Sayouten_P02 == P02) {
+				W_P00Sayouten_JSIVector = subVector(Double_Sayouten_P00, J);
+				W_P01Sayouten_JSIVector = subVector(Double_Sayouten_P01, J);
+				W_P00Torque = Outer_Product(W_P00Sayouten_JSIVector, F0);
+				W_P01Torque = Outer_Product(W_P01Sayouten_JSIVector, F0);
+				W_P00delta_AMomentum = mulVector(W_P00Torque, time);
+				W_P01delta_AMomentum = mulVector(W_P01Torque, time);
+				double []sum_AM = addVector(W_P00delta_AMomentum, W_P01delta_AMomentum);
+				A_Momentum_0 = addVector(A_Momentum_0, sum_AM);
+				return A_Momentum_0;
+			}
+		}*/
+		return A_Momentum_0;
+	}
+	public double[] Angular_Momentum_1(double time, double []J) {
+		boolean x = Collision_Detection();
+		//boolean w = Double_Collision_Detection();
+		double []Sayouten_JSIVector = subVector(Sayouten_1, J);
+		double []Torque = Outer_Product(Sayouten_JSIVector, F1);
+		if(delta_t >= time && time > 0){
+			A_Momentum_1 = mulVector(Torque, time); //[]Torque * t
+		}
+		else if(x == true && time > delta_t) {
+			F1 = Collision_Detection_F1();
+			Sayouten_1 = Single_Collision_Detection_Sayouten_1();
+			double []C_Sayouten_JSIVector = subVector(Sayouten_1, J);
+			double []C_Torque = Outer_Product(C_Sayouten_JSIVector, F1);
+			double []delta_AMomentum = mulVector(C_Torque, time);
+			A_Momentum_1 = addVector(A_Momentum_1, delta_AMomentum);
+		}
+		/*else if(w == true && time > delta_t) {
+			Double_Sayouten_P10 = Collision_Double_Sayouten_P10();
+			Double_Sayouten_P11 = Collision_Double_Sayouten_P11();
+			Double_Sayouten_P12 = Collision_Double_Sayouten_P12();
+			double []W_P10Sayouten_JSIVector = new double[3];
+			double []W_P11Sayouten_JSIVector = new double[3];
+			double []W_P12Sayouten_JSIVector = new double[3];
+			double []W_P10Torque = new double[3];
+			double []W_P11Torque = new double[3];
+			double []W_P12Torque = new double[3];
+			double []W_P10delta_AMomentum = new double[3];
+			double []W_P11delta_AMomentum = new double[3];
+			double []W_P12delta_AMomentum = new double[3];
+			if(Double_Sayouten_P10  == P10) {
+				W_P11Sayouten_JSIVector = subVector(Double_Sayouten_P11, J);
+				W_P12Sayouten_JSIVector = subVector(Double_Sayouten_P12, J);
+				W_P11Torque = Outer_Product(W_P11Sayouten_JSIVector, F1);
+				W_P12Torque = Outer_Product(W_P12Sayouten_JSIVector, F1);
+				W_P11delta_AMomentum = mulVector(W_P11Torque, time);
+				W_P12delta_AMomentum = mulVector(W_P12Torque, time);
+				double []sum_AM = addVector(W_P11delta_AMomentum, W_P12delta_AMomentum);
+				A_Momentum_1 = addVector(A_Momentum_1, sum_AM);
+				return A_Momentum_1;
+			}
+			if(Double_Sayouten_P11 == P11) {
+				W_P10Sayouten_JSIVector = subVector(Double_Sayouten_P10, J);
+				W_P12Sayouten_JSIVector = subVector(Double_Sayouten_P12, J);
+				W_P11Torque = Outer_Product(W_P11Sayouten_JSIVector, F1);
+				W_P12Torque = Outer_Product(W_P12Sayouten_JSIVector, F1);
+				W_P10delta_AMomentum = mulVector(W_P10Torque, time);
+				W_P12delta_AMomentum = mulVector(W_P12Torque, time);
+				double []sum_AM = addVector(W_P10delta_AMomentum, W_P12delta_AMomentum);
+				A_Momentum_1 = addVector(A_Momentum_1, sum_AM);
+				return A_Momentum_1;
+			}
+			if(Double_Sayouten_P12 == P12) {
+				W_P10Sayouten_JSIVector = subVector(Double_Sayouten_P10, J);
+				W_P11Sayouten_JSIVector = subVector(Double_Sayouten_P11, J);
+				W_P10Torque = Outer_Product(W_P10Sayouten_JSIVector, F1);
+				W_P11Torque = Outer_Product(W_P11Sayouten_JSIVector, F1);
+				W_P10delta_AMomentum = mulVector(W_P10Torque, time);
+				W_P11delta_AMomentum = mulVector(W_P11Torque, time);
+				double []sum_AM = addVector(W_P10delta_AMomentum, W_P11delta_AMomentum);
+				A_Momentum_1 = addVector(A_Momentum_1, sum_AM);
+				return A_Momentum_1;
+			}
+		}*/
+		return A_Momentum_1;
+	}
+	public double[][] Inverse_MomentOfInertia (double []PP0, double []PP1, double PP2[], double []G) {//PP0, PP1, PP2は各剛体の各質点の位置ベクトル
+		double []ri0 = subVector(PP0, G);
+		double []ri1 = subVector(PP1, G);
+		double []ri2 = subVector(PP2, G);
+		double [][]I0 = new double [3][3];
+		double [][]I1 = new double [3][3];
+		double [][]I2 = new double [3][3];
+		double [][]I  = new double [3][3];
+		double [][]Inverse_I = new double [3][3];
+
+		I0[0][0] =  ri0[1] * ri0[1] + ri0[2] * ri0[2];
+		I0[1][0] = -ri0[1] * ri0[0];
+		I0[2][0] = -ri0[2] * ri0[0];
+		I0[0][1] = -ri0[0] * ri0[1];
+		I0[1][1] =  ri0[0] * ri0[0] + ri0[2] * ri0[2];
+		I0[2][1] = -ri0[2] * ri0[1];
+		I0[0][2] = -ri0[0] * ri0[2];
+		I0[1][2] = -ri0[1] * ri0[2];
+		I0[2][2] =  ri0[0] * ri0[0] + ri0[1] * ri0[1];
+
+		I1[0][0] =  ri1[1] * ri1[1] + ri1[2] * ri1[2];
+		I1[1][0] = -ri1[1] * ri1[0];
+		I1[2][0] = -ri1[2] * ri1[0];
+		I1[0][1] = -ri1[0] * ri1[1];
+		I1[1][1] =  ri1[0] * ri1[0] + ri1[2] * ri1[2];
+		I1[2][1] = -ri1[2] * ri1[1];
+		I1[0][2] = -ri1[0] * ri1[2];
+		I1[1][2] = -ri1[1] * ri1[2];
+		I1[2][2] =  ri1[0] * ri1[0] + ri1[1] * ri1[1];
+
+		I2[0][0] =  ri2[1] * ri2[1] + ri2[2] * ri2[2];
+		I2[1][0] = -ri2[1] * ri2[0];
+		I2[2][0] = -ri2[2] * ri2[0];
+		I2[0][1] = -ri2[0] * ri2[1];
+		I2[1][1] =  ri2[0] * ri2[0] + ri2[2] * ri2[2];
+		I2[2][1] = -ri2[2] * ri2[1];
+		I2[0][2] = -ri2[0] * ri2[2];
+		I2[1][2] = -ri2[1] * ri2[2];
+		I2[2][2] =  ri2[0] * ri2[0] + ri2[1] * ri2[1];
+
+		I[0][0] = I0[0][0] + I1[0][0] + I2[0][0];
+		I[1][0] = I0[1][0] + I1[1][0] + I2[1][0];
+		I[2][0] = I0[2][0] + I1[2][0] + I2[2][0];
+		I[0][1] = I0[0][1] + I1[0][1] + I2[0][1];
+		I[1][1] = I0[1][1] + I1[1][1] + I2[1][1];
+		I[2][1] = I0[2][1] + I1[2][1] + I2[2][1];
+		I[0][2] = I0[0][2] + I1[0][2] + I2[0][2];
+		I[1][2] = I0[1][2] + I1[1][2] + I2[1][2];
+		I[2][2] = I0[2][2] + I1[2][2] + I2[2][2];
+
+		double detI = I[0][0] * I[1][1] * I[2][2] + I[1][0] * I[2][1] * I[0][2] + I[2][0] * I[0][1] * I[1][2]
+						-I[0][0] * I[1][2] * I[2][1] - I[0][2] * I[1][1] * I[2][0] - I[0][1] * I[1][0] * I[2][2];
+		Inverse_I[0][0] = 1/detI*(I[1][1]*I[2][2] - I[1][2]*I[2][1]);
+		Inverse_I[1][0] = 1/detI*(I[1][2]*I[2][0] - I[1][0]*I[2][2]);
+		Inverse_I[2][0] = 1/detI*(I[1][0]*I[2][1] - I[1][1]*I[2][0]);
+		Inverse_I[0][1] = 1/detI*(I[0][2]*I[2][1] - I[0][1]*I[2][2]);
+		Inverse_I[1][1] = 1/detI*(I[0][0]*I[2][2] - I[0][2]*I[2][0]);
+		Inverse_I[2][1] = 1/detI*(I[0][1]*I[2][0] - I[0][0]*I[2][1]);
+		Inverse_I[0][2] = 1/detI*(I[0][1]*I[1][2] - I[0][2]*I[1][1]);
+		Inverse_I[1][2] = 1/detI*(I[0][2]*I[1][0] - I[0][0]*I[1][2]);
+		Inverse_I[2][2] = 1/detI*(I[0][0]*I[1][1] - I[0][1]*I[1][0]);
+		return Inverse_I;
+	}
+	public double Angle_Of_Rotation_0(double time, double []P0, double []P1, double []P2, double []J) {				//角速度
+		double [] Angle_Rate = {0, 0, 0};
+		double [] Angular_Momentum = {0, 0, 0};
+		double [][] Inverse_I = new double[3][3];
+		double scalar_AngleRate;
+		Angular_Momentum = Angular_Momentum_0(time, J);
+		Inverse_I = Inverse_MomentOfInertia(P0, P1, P2, J);
+		Angle_Rate = mulArray_Vector_2(Inverse_I, Angular_Momentum);
+		double A = Angle_Rate[0] * Angle_Rate[0] + Angle_Rate[1] * Angle_Rate[1] + Angle_Rate[2] * Angle_Rate[2];
+		scalar_AngleRate = Math.sqrt(A);
+		return scalar_AngleRate;
+	}
+	public double Angle_Of_Rotation_1(double time, double []P0, double []P1, double []P2, double []J) {				//角速度
+		double [] Angle_Rate = {0, 0, 0};
+		double [] Angular_Momentum = {0, 0, 0};
+		double [][] Inverse_I = new double[3][3];
+		double scalar_AngleRate;
+		Angular_Momentum = Angular_Momentum_1(time, J);
+		Inverse_I = Inverse_MomentOfInertia(P0, P1, P2, J);
+		Angle_Rate = mulArray_Vector_2(Inverse_I, Angular_Momentum);
+		double A = Angle_Rate[0] * Angle_Rate[0] + Angle_Rate[1] * Angle_Rate[1] + Angle_Rate[2] * Angle_Rate[2];
+		scalar_AngleRate = Math.sqrt(A);
+		return scalar_AngleRate;
+	}
+	public double[] Angle_Rate_0(double time, double []P0, double []P1, double []P2, double []J) {
+		double [] Angle_Rate = {0, 0, 0};
+		double [] Angular_Momentum = {0, 0, 0};
+		double [][] Inverse_I = new double[3][3];
+		Angular_Momentum = Angular_Momentum_0(time, J);
+		Inverse_I = Inverse_MomentOfInertia(P0, P1, P2, J);
+		Angle_Rate = mulArray_Vector_2(Inverse_I, Angular_Momentum);
+		return Angle_Rate;
+	}
+	public double[] Angle_Rate_1(double time, double []F, double []P0, double []P1, double []P2, double []J) {
+		double [] Angle_Rate = {0, 0, 0};
+		double [] Angular_Momentum = {0, 0, 0};
+		double [][] Inverse_I = new double[3][3];
+		Angular_Momentum = Angular_Momentum_1(time, J);
+		Inverse_I = Inverse_MomentOfInertia(P0, P1, P2, J);
+		Angle_Rate = mulArray_Vector_2(Inverse_I, Angular_Momentum);
+		return Angle_Rate;
+	}
+
+	public Point From3Dto2D(double []Center, int px, int py){	//求めた球の中心を三次元から二次元へ
+		int x2d, y2d;
+		final double D2Rad = Math.PI/180.0;						//度からラジアンへの変換定数
+		double x1, y1, zt;
+		double sinA = Math.sin(0), sinB = Math.sin(90);			//見る角度を変える
+		double cosA = Math.cos(0), cosB = Math.cos(90);
+		x1 =  Center[0]*cosB + Center[2]*sinB;						//正射影変換の式
+		zt = -Center[0]*sinB + Center[2]*cosB;
+		y1 =  Center[1]*cosA - zt*sinA;
+		x2d = px+(int)Math.rint(x1);								//px図形を描き始めるx座標
+		y2d = py-(int)Math.rint(y1); 								//py図形を描き始めるy座標
+		return new Point(x2d, y2d) ;								//x2d, y2d座標を持つPointオブジェクトを作り，戻り値とする
+	}
+	public double[] Goutai_Speed_0(double time) {
+		double []Goutai_V = {0, 0, 0};
+		double []P = Momentum_0(time);
+		Goutai_V = mulVector(P, 1.0/12.0);//1/3は剛体の質量
+		return  Goutai_V;
+	}
+	public double[] Goutai_Speed_1(double time) {
+		double []Goutai_V = {0, 0, 0};
+		double []P = Momentum_1(time);
+		Goutai_V = mulVector(P, 1.0/12.0);//1/3は剛体の質量
+		return  Goutai_V;
+	}
+	public double[] Goutai_Distance_0(double time) {
+		double []Goutai_V = new double[3];
+		double []P = Momentum_0(time);
+		double []Goutai_Distance_0 = new double[3];
+		Goutai_V = mulVector(P, 1.0/3.0);//1/3は剛体の質量
+		Goutai_Distance_0[0] = Goutai_V[0] * delta_t;
+		Goutai_Distance_0[1] = Goutai_V[1] * delta_t;
+		Goutai_Distance_0[2] = Goutai_V[2] * delta_t;
+		return  Goutai_Distance_0;
+	}
+	public double[] Goutai_Distance_1(double time) {
+		double []Goutai_V = new double[3];
+		double []P = Momentum_1(time);
+		double []Goutai_Distance_1 = new double[3];
+		Goutai_V = mulVector(P, 1.0/3.0);//1/3は剛体の質量
+		Goutai_Distance_1[0] = Goutai_V[0] * delta_t;
+		Goutai_Distance_1[1] = Goutai_V[1] * delta_t;
+		Goutai_Distance_1[2] = Goutai_V[2] * delta_t;
+		return  Goutai_Distance_1;
+	}
+	public boolean Collision_Detection() {
+		double []XijP00_P10 = subVector(P00, P10);
+		double []XijP00_P11 = subVector(P00, P11);
+		double []XijP00_P12 = subVector(P00, P12);
+		double []XijP01_P10 = subVector(P01, P10);
+		double []XijP01_P11 = subVector(P01, P11);
+		double []XijP01_P12 = subVector(P01, P12);
+		double []XijP02_P10 = subVector(P02, P10);
+		double []XijP02_P11 = subVector(P02, P11);
+		double []XijP02_P12 = subVector(P02, P12);
+		double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+		double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+		double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+		double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+		double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+		double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+		double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+		double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+		double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+		double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+		double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+		double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+		double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+		double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+		double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+		double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+		double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+		double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+		if(scalar_XijP00_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P12 <= diameter) {
+			return true;
+		}
+		return false;
+	}
+	public double[] Collision_Detection_F0() {
+		boolean x = Collision_Detection();
+		if(x == true ) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			double [][]Fn = new double [3][3];
+			if(scalar_XijP00_P10 <= diameter) {
+				Fn = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fn[1][0], Fn[1][1], Fn[1][2]};
+				F0 = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter) {
+				Fn = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fn[1][0], Fn[1][1], Fn[1][2]};
+				F0 = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter) {
+				Fn = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				Fn = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fn[1][0], Fn[1][1], Fn[1][2]};
+				F0 = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter) {
+				Fn = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fn[1][0], Fn[1][1], Fn[1][2]};
+				F0 = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter) {
+				Fn = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fn[1][0], Fn[1][1], Fn[1][2]};
+				F0 = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter) {
+				Fn = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fn[1][0], Fn[1][1], Fn[1][2]};
+				F0 = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter) {
+				Fn = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fn[1][0], Fn[1][1], Fn[1][2]};
+				F0 = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter) {
+				Fn = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fn[1][0], Fn[1][1], Fn[1][2]};
+				F0 = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter) {
+				Fn = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fn[1][0], Fn[1][1], Fn[1][2]};
+				F0 = Fj;
+			}
+		}
+	return F0;
+	}
+	public double[] Collision_Detection_F1() {//booleanを使わない理由は粒子間の距離をつかうため
+		boolean x = Collision_Detection();
+		if ( x == true ) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			double [][]Fn = new double [3][3];
+			if(scalar_XijP00_P10 <= diameter) {
+				Fn = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fi = {Fn[0][0], Fn[0][1], Fn[0][2]};
+				F1 = Fi;
+			}
+			else if(scalar_XijP00_P11 <= diameter) {
+				Fn = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fi = {Fn[0][0], Fn[0][1], Fn[0][2]};
+				F1 = Fi;
+			}
+			else if(scalar_XijP00_P12 <= diameter) {
+				Fn = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fi = {Fn[0][0], Fn[0][1], Fn[0][2]};
+				F1 = Fi;
+			}
+			else if(scalar_XijP01_P10 <= diameter) {
+				Fn = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fi = {Fn[0][0], Fn[0][1], Fn[0][2]};
+				F1 = Fi;
+			}
+			else if(scalar_XijP01_P11 <= diameter) {
+				Fn = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fi = {Fn[0][0], Fn[0][1], Fn[0][2]};
+				F1 = Fi;
+			}
+			else if(scalar_XijP01_P12 <= diameter) {
+				Fn = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fi = {Fn[0][0], Fn[0][1], Fn[0][2]};
+				F1 = Fi;
+			}
+			else if(scalar_XijP02_P10 <= diameter) {
+				Fn = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fi = {Fn[0][0], Fn[0][1], Fn[0][2]};
+				F1 = Fi;
+			}
+			else if(scalar_XijP02_P11 <= diameter) {
+				Fn = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fi = {Fn[0][0], Fn[0][1], Fn[0][2]};
+				F1 = Fi;
+			}
+			else if(scalar_XijP02_P12 <= diameter) {
+				Fn = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fi = {Fn[0][0], Fn[0][1], Fn[0][2]};
+				F1 = Fi;
+			}
+		}
+	return F1;
+	}
+	public double[]  Single_Collision_Detection_Sayouten_0() {
+		boolean x = Collision_Detection();
+		if(x == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+
+			if(scalar_XijP00_P10 <= diameter) {
+				Sayouten_0 = P00;
+			}
+			else if(scalar_XijP00_P11 <= diameter) {
+				Sayouten_0 = P00;
+			}
+			else if(scalar_XijP00_P12 <= diameter) {
+				Sayouten_0 = P00;
+			}
+			else if(scalar_XijP01_P10 <= diameter) {
+				Sayouten_0 = P01;
+			}
+			else if(scalar_XijP01_P11 <= diameter) {
+				Sayouten_0 = P01;
+			}
+			else if(scalar_XijP01_P12 <= diameter) {
+				Sayouten_0 = P01;
+			}
+			else if(scalar_XijP02_P10 <= diameter) {
+				Sayouten_0 = P02;
+			}
+			else if(scalar_XijP02_P11 <= diameter) {
+				Sayouten_0 = P02;
+			}
+			else if(scalar_XijP02_P12 <= diameter) {
+				Sayouten_0 = P02;
+			}
+		}
+		return Sayouten_0;
+	}
+	public double[]   Single_Collision_Detection_Sayouten_1() {
+		boolean x = Collision_Detection();
+		if(x == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			if(scalar_XijP00_P10 <= diameter) {
+				Sayouten_1 = P10;
+			}
+			else if(scalar_XijP00_P11 <= diameter) {
+				Sayouten_1 = P11;
+			}
+			else if(scalar_XijP00_P12 <= diameter) {
+				Sayouten_1 = P12;
+			}
+			else if(scalar_XijP01_P10 <= diameter) {
+				Sayouten_1 = P10;
+			}
+			else if(scalar_XijP01_P11 <= diameter) {
+				Sayouten_1 = P11;
+			}
+			else if(scalar_XijP01_P12 <= diameter) {
+				Sayouten_1 = P12;
+			}
+			else if(scalar_XijP02_P10 <= diameter) {
+				Sayouten_1 = P10;
+			}
+			else if(scalar_XijP02_P11 <= diameter) {
+				Sayouten_1 = P11;
+			}
+			else if(scalar_XijP02_P12 <= diameter) {
+				Sayouten_1 = P12;
+			}
+		}
+	return Sayouten_1;
+	}
+	/*public boolean Double_Collision_Detection() {
+		double []XijP00_P10 = subVector(P00, P10);
+		double []XijP00_P11 = subVector(P00, P11);
+		double []XijP00_P12 = subVector(P00, P12);
+		double []XijP01_P10 = subVector(P01, P10);
+		double []XijP01_P11 = subVector(P01, P11);
+		double []XijP01_P12 = subVector(P01, P12);
+		double []XijP02_P10 = subVector(P02, P10);
+		double []XijP02_P11 = subVector(P02, P11);
+		double []XijP02_P12 = subVector(P02, P12);
+		double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+		double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+		double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+		double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+		double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+		double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+		double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+		double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+		double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+		double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+		double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+		double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+		double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+		double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+		double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+		double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+		double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+		double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+		if (scalar_XijP00_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+			return true;
+		}
+		else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+			return true;
+		}
+		return false;
+	}
+	public double[] W_Collision_CF0_a() {
+		boolean w = Collision_Detection();
+		if(w == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			double [][]Fw = new double [3][3];
+			if (scalar_XijP00_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+		}
+		return CF0_a;
+	}
+	public double[] W_Collision_CF0_b() {
+		boolean w = Collision_Detection();
+		if(w == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			double [][]Fw = new double [3][3];
+			if (scalar_XijP00_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_a = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+		}
+		return CF0_b;
+	}
+	public double[] W_Collision_CF1_a() {
+		boolean w = Collision_Detection();
+		if(w == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			double [][]Fw = new double [3][3];
+			if (scalar_XijP00_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF0_b = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_a = Fj;
+			}
+		}
+		return CF1_a;
+	}
+	public double[] W_Collision_CF1_b() {
+		boolean w = Collision_Detection();
+		if(w == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			double [][]Fw = new double [3][3];
+			if (scalar_XijP00_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P12, XijP02_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P10, XijP02_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP02_P11, XijP02_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P12, XijP00_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P12, XijP01_P12);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P10, XijP00_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP00_P11, XijP00_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P10, XijP01_P10);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Fw = Contact_Force(scalar_XijP01_P11, XijP01_P11);
+				double []Fj = {Fw[1][0], Fw[1][1], Fw[1][2]};
+				CF1_b = Fj;
+			}
+		}
+		return CF1_b;
+	}
+	public double[] Collision_Double_Sayouten_P00() {
+		boolean w = Collision_Detection();
+		if(w == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			if (scalar_XijP00_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P00 = P00;
+				return Double_Sayouten_P00;
+			}
+		}
+		return Double_Sayouten_P00;
+	}
+	public double[] Collision_Double_Sayouten_P01(){
+		boolean w = Collision_Detection();
+			if(w == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			if (scalar_XijP00_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P01 = P01;
+				return Double_Sayouten_P01;
+			}
+		}
+		return Double_Sayouten_P01;
+	}
+	public double[] Collision_Double_Sayouten_P02() {
+		boolean w = Collision_Detection();
+		if(w == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P02 = P02;
+				return Double_Sayouten_P02;
+			}
+		}
+		return Double_Sayouten_P02;
+	}
+	public double[] Collision_Double_Sayouten_P10() {
+		boolean w = Collision_Detection();
+		if(w == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			if (scalar_XijP00_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P10 = P10;
+				return Double_Sayouten_P10;
+			}
+		}
+		return Double_Sayouten_P10;
+	}
+	public double[] Collision_Double_Sayouten_P11() {
+		boolean w = Collision_Detection();
+		if(w == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			if (scalar_XijP00_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P11 = P11;
+				return Double_Sayouten_P11;
+			}
+		}
+		return Double_Sayouten_P11;
+	}
+	public double[] Collision_Double_Sayouten_P12() {
+		boolean w = Collision_Detection();
+		if(w == true) {
+			double []XijP00_P10 = subVector(P00, P10);
+			double []XijP00_P11 = subVector(P00, P11);
+			double []XijP00_P12 = subVector(P00, P12);
+			double []XijP01_P10 = subVector(P01, P10);
+			double []XijP01_P11 = subVector(P01, P11);
+			double []XijP01_P12 = subVector(P01, P12);
+			double []XijP02_P10 = subVector(P02, P10);
+			double []XijP02_P11 = subVector(P02, P11);
+			double []XijP02_P12 = subVector(P02, P12);
+			double AP00_P10 = XijP00_P10[0] * XijP00_P10[0] + XijP00_P10[1] * XijP00_P10[1] + XijP00_P10[2] * XijP00_P10[2];
+			double AP00_P11 = XijP00_P11[0] * XijP00_P11[0] + XijP00_P11[1] * XijP00_P11[1] + XijP00_P11[2] * XijP00_P11[2];
+			double AP00_P12 = XijP00_P12[0] * XijP00_P12[0] + XijP00_P12[1] * XijP00_P12[1] + XijP00_P12[2] * XijP00_P12[2];
+			double AP01_P10 = XijP01_P10[0] * XijP01_P10[0] + XijP01_P10[1] * XijP01_P10[1] + XijP01_P10[2] * XijP01_P10[2];
+			double AP01_P11 = XijP01_P11[0] * XijP01_P11[0] + XijP01_P11[1] * XijP01_P11[1] + XijP01_P11[2] * XijP01_P11[2];
+			double AP01_P12 = XijP01_P12[0] * XijP01_P12[0] + XijP01_P12[1] * XijP01_P12[1] + XijP01_P12[2] * XijP01_P12[2];
+			double AP02_P10 = XijP02_P10[0] * XijP02_P10[0] + XijP02_P10[1] * XijP02_P10[1] + XijP02_P10[2] * XijP02_P10[2];
+			double AP02_P11 = XijP02_P11[0] * XijP02_P11[0] + XijP02_P11[1] * XijP02_P11[1] + XijP02_P11[2] * XijP02_P11[2];
+			double AP02_P12 = XijP02_P12[0] * XijP02_P12[0] + XijP02_P12[1] * XijP02_P12[1] + XijP02_P12[2] * XijP02_P12[2];
+			double scalar_XijP00_P10 = Math.sqrt(AP00_P10);
+			double scalar_XijP00_P11 = Math.sqrt(AP00_P11);
+			double scalar_XijP00_P12 = Math.sqrt(AP00_P12);
+			double scalar_XijP01_P10 = Math.sqrt(AP01_P10);
+			double scalar_XijP01_P11 = Math.sqrt(AP01_P11);
+			double scalar_XijP01_P12 = Math.sqrt(AP01_P12);
+			double scalar_XijP02_P10 = Math.sqrt(AP02_P10);
+			double scalar_XijP02_P11 = Math.sqrt(AP02_P11);
+			double scalar_XijP02_P12 = Math.sqrt(AP02_P12);
+			if(scalar_XijP00_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP00_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP00_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP00_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP01_P10 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP01_P11 <= diameter && scalar_XijP02_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P10 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP01_P12 <= diameter && scalar_XijP02_P11 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP02_P10 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP00_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP02_P11 <= diameter && scalar_XijP01_P12 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P10 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP00_P11 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P10 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+			else if(scalar_XijP02_P12 <= diameter && scalar_XijP01_P11 <= diameter) {
+				Double_Sayouten_P12 = P12;
+				return Double_Sayouten_P12;
+			}
+		}
+		return Double_Sayouten_P12;
+	}*/
+	public double[][] Contact_Force(double scalar_dij, double []dij) {
+		double pij = diameter - scalar_dij;
+		double []nn = mulVector(dij, 1.0 / scalar_dij);
+		double []Fi = mulVector(nn, -0.1 * pij);		//F = -kx
+		double []Fj = mulVector(Fi, -1.0);
+		double [][]Fn = {{Fi[0], Fi[1], Fi[2]}, {Fj[0], Fj[1], Fj[2]}};
+		return Fn;
+	}
+	public double Particle_Distance(double []ItiV_P0, double []ItiV_P1) {
+		double []Xij = subVector(ItiV_P0, ItiV_P1);
+		double A = Xij[0] * Xij[0] + Xij[1] * Xij[1] + Xij[2] * Xij[2];
+		double scalar_Xij = Math.sqrt(A);
+		return scalar_Xij;
+	}
+
+	public double[] Outer_Product(double[] A, double[] B) {
+		double [] C = new double [3];
+		C[0] = A[1] * B[2] - A[2] * B[1];
+		C[1] = A[2] * B[0] - A[0] * B[2];
+		C[2] = A[0] * B[1] - A[1] * B[0];
+		return C;
+	}
+	public double[][] mulArray(double[][] A, double[][] B) {
+		double[][] C = new double[3][3];
+		for (int i = 0; i < 3; i++) {
+			for (int j = 0; j < 3; j++) {
+				double sum = 0;
+				for (int k = 0; k < 3; k++) {
+					sum += A[i][k] * B[k][j];
+				}
+			C[i][j] = sum;
+			}
+		}
+		return C;
+	}
+	public double[] subVector(double[] A, double[] B) {
+		double[] C = new double[3];
+		for (int i = 0; i < 3; i++) {
+				C[i] += A[i] - B[i];
+		}
+		return C;
+	}
+	public double[] addVector(double[] A, double[] B) {
+		double[] C = new double[3];
+		for (int i = 0; i < 3; i++) {
+				C[i] += A[i] + B[i];
+		}
+		return C;
+	}
+	public double[] mulVector(double[] A,  double B) {
+		double[] C = new double[3];
+		for (int i = 0; i < 3; i++) {
+				C[i] += A[i] * B;
+		}
+		return C;
+	}
+	public double [] mulArray_Vector_2(double[][]I, double[]M) {
+		double []Answer = {0, 0, 0};
+		for(int i = 0; i < 3; i++) {
+			for(int j = 0; j < 3; j++) {
+				double sum = 0;
+				for(int k = 0; k < 3; k++) {
+					sum += I[i][k] * M[k];
+				}
+		     Answer[i] = sum;
+			}
+		}
+		return Answer;
+	}
+}
+class MyThread extends Thread { //スレッドのクラス
+	MyCanvas mc; //メッセージを送る相手
+	MyThread(MyCanvas m) { //コンストラクタ
+		mc = m; //メッセージを送る相手を記録
+	}
+	public void run() { //このメソッドがスレッドとして実行される
+		while (true) {
+			mc.drawNext(); //mcに対し，円を描く位置を変えさせる
+			try{
+				sleep(100);  //1000msec眠る
+			} catch(InterruptedException e){System.out.println("睡眠中に例外発生!");} //例外の捕獲
+		}
+	}
+}
